@@ -15,12 +15,12 @@ fn main() {
         let mut input = String::new();
         stdin().read_line(&mut input).unwrap();
 
-        // everything after first whitespace is args 
-        let mut split = input.trim().split_whitespace();
-        let program = split.next().unwrap();
-        let args = split;
+        let command_line = match CommandLine::parse(&input) {
+            Some(command) => command,
+            None => continue,
+        }; 
 
-        let status = launch(program, args);
+        let status = launch(&command_line);
 
         match status {
             Some(status) => {if !status.success() {println!("Exited with: {}", status)}},
@@ -30,21 +30,35 @@ fn main() {
     }
 }
 
+struct CommandLine {
+    program: String,
+    args: Vec<String>,
+}
 
-fn launch<'a>(program: &str, args: impl Iterator<Item = &'a str>) -> Option<std::process::ExitStatus> {
-    let builtins = get_builtins();
-
-    if let Some(builtin) = builtins.get(program) {
-        builtin();
-        None 
-    } else {
-        execute(program, args)
+impl CommandLine {
+    fn parse(input: &str) -> Option<Self> {
+        let mut parts = input.split_whitespace();
+        let program = parts.next()?.to_string();
+        let args = parts.map(|s| s.to_string()).collect();
+        Some(CommandLine { program, args })
     }
 }
 
-fn execute<'a>(program: &str, args: impl Iterator<Item = &'a str>) -> Option<std::process::ExitStatus>{
-    let mut child = Command::new(program)
-        .args(args)
+
+fn launch(command: &CommandLine) -> Option<std::process::ExitStatus> {
+    let builtins = get_builtins();
+
+    if let Some(builtin) = builtins.get(command.program.as_str()) {
+        builtin(&command.args);
+        None 
+    } else {
+        execute(command)
+    }
+}
+
+fn execute(command: &CommandLine) -> Option<std::process::ExitStatus>{
+    let mut child = Command::new(&command.program)
+        .args(&command.args)
         .spawn()
         .unwrap();
 
