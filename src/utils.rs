@@ -15,6 +15,7 @@ pub fn format_working_dir() -> String {
     }
 }
 
+#[derive(Debug)]
 pub enum ShellError {
     IoError(std::io::Error),
     ParseError,

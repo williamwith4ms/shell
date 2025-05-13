@@ -1,5 +1,5 @@
 use std::io::{Write, stdin, stdout};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use builtins::get_builtins;
 
@@ -17,25 +17,59 @@ fn main() {
 
         let mut input = String::new();
         stdin().read_line(&mut input).unwrap();
+        let input = input.trim();
+        if input.is_empty() {
+            continue;
+        }
 
-        let command_line = match CommandLine::parse(&input) {
-            Ok(command) => command,
-            Err(err) => {
-                eprintln!("{}", err);
-                continue;
-            }
-        };
+        let cmds: Vec<CommandLine> = input
+            .split('|')
+            .map(str::trim)
+            .map(CommandLine::parse)
+            .collect::<Result<_, _>>().expect("TODO");
 
-        match launch(&command_line) {
-            Ok(Some(status)) if !status.success() => {
-                eprintln!("{}", ShellError::CommandFailed(status));
-            }
-            Ok(_) => {}
-            Err(err) => {
+        if cmds.len() > 1 {
+            if let Err(err) = pipeline(&cmds) {
                 eprintln!("rshell: {}", err);
+            }
+        } else {
+            match launch(&cmds[0]) {
+                Ok(Some(status)) if !status.success() => {
+                    eprintln!("{}", ShellError::CommandFailed(status));
+                }
+                Ok(_) => {}
+                Err(err) => {
+                    eprintln!("rshell: {}", err);
+                }
             }
         }
     }
+}
+
+fn pipeline(cmds: &[CommandLine]) -> Result<(), ShellError> {
+    let mut processes: Vec<std::process::Child> = Vec::new();
+
+    for (i, cmd_line) in cmds.iter().enumerate() {
+        let mut cmd = Command::new(&cmd_line.program);
+        cmd.args(&cmd_line.args);
+
+        if i == 0 {
+            cmd.stdout(Stdio::piped());
+        } else if i == cmds.len() -1 {
+            cmd.stdin(processes[i - 1].stdout.take().unwrap());
+        } else {
+            cmd.stdin(processes[i - 1].stdout.take().unwrap())
+               .stdout(Stdio::piped());
+        }
+
+        processes.push(cmd.spawn()?);
+    }
+
+    for mut child in processes {
+        child.wait()?;
+    }
+
+    Ok(())
 }
 
 struct CommandLine {
