@@ -30,7 +30,7 @@ fn main() {
 
         if cmds.len() > 1 {
             if let Err(err) = pipeline(&cmds) {
-                eprintln!("rshell: {}", err);
+                eprintln!("shell: {}", err);
             }
         } else {
             match launch(&cmds[0]) {

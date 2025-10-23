@@ -26,13 +26,13 @@ pub enum ShellError {
 impl std::fmt::Display for ShellError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ShellError::IoError(error) => write!(f, "rshell: IO error: {}", error),
-            ShellError::ParseError => write!(f, "rshell: failed to parse command line"),
+            ShellError::IoError(error) => write!(f, "shell: IO error: {}", error),
+            ShellError::ParseError => write!(f, "shell: failed to parse command line"),
             ShellError::CommandFailed(exit_status) => {
-                write!(f, "rshell: command exited with status: {}", exit_status)
+                write!(f, "shell: command exited with status: {}", exit_status)
             }
             ShellError::CommandNotFound(command) => {
-                write!(f, "rshell: Unknown command: {}", command)
+                write!(f, "shell: Unknown command: {}", command)
             }
         }
     }
